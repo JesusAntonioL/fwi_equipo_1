@@ -11,7 +11,7 @@ It is vital to create a virtual environment and run the requirements.txt to incl
 ### 📂 `calibration_pairs/`
 Contains calibration image pairs used for stereo calibration between optic and thermal cameras.
 
-### 📂 `expansion_sim/`
+### 📂 `expansion_incendios/`
 Includes simulation tools or scripts for developing the ROI, calculating the weights utilizing WOE and displaying the results in 2D and 3D.
 
 **This folder should be implemented in Google Drive Desktop to run the entire code.**
