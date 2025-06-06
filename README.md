@@ -1,1 +1,1 @@
-This commit contains all the files, models, and videos necessary to run the WildFire detections program. Make sure to keep it private, otherwise the Google Firebase API will be disabled and have to be reconfigured.
+# fwi_equipo_1
