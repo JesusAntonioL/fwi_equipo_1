@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mapa con Viento y Riesgo</title>
+    <script src="https://cdn.maptiler.com/maptiler-sdk-js/v3.2.0/maptiler-sdk.umd.min.js"></script>
+    <script src="https://cdn.maptiler.com/maptiler-weather/v3.0.1/maptiler-weather.umd.min.js"></script>
+    <link href="https://cdn.maptiler.com/maptiler-sdk-js/v3.2.0/maptiler-sdk.css" rel="stylesheet" />
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: sans-serif;
+        }
+
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+        }
+
+        #pointer-data {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            color: #fff;
+            padding: 6px 10px;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: bold;
+            text-shadow: 0 0 3px black;
+        }
+
+        #arrow {
+            display: inline-block;
+            background: #fff;
+            color: #000;
+            border: dotted red 4px;
+            border-radius: 50%;
+            padding: 4px;
+            transform-origin: center;
+        }
+
+        .ui-container {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 10px;
+            z-index: 10;
+        }
+
+        .control-panel,
+        .time-controls,
+        .colorbar-container {
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid #000;
+            border-radius: 6px;
+            padding: 8px;
+            font-size: 14px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .time-controls {
+            width: 280px;
+        }
+
+        .colorbar-container {
+            width: 280px;
+        }
+
+        .labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            margin-top: 4px;
+        }
+
+        #risk-bar {
+            height: 14px;
+            background: linear-gradient(to right,
+                    #00ff00,
+                    #66ff00,
+                    #99ff00,
+                    #ccff00,
+                    #ffff00,
+                    #ffcc00,
+                    #ff9900,
+                    #ff6600,
+                    #ff3300,
+                    #ff0000);
+            border-radius: 4px;
+            margin-top: 4px;
+        }
+
+        #wind-bar {
+            height: 14px;
+            background: linear-gradient(to right,
+                    #00f,
+                    #0ff,
+                    #0f0,
+                    #ff0,
+                    #f90,
+                    #f00);
+            border-radius: 4px;
+            margin-top: 4px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 4px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="map"></div>
+    <div id="pointer-data"></div>
+
+    <div class="ui-container">
+        <div class="control-panel">
+            <label><input type="checkbox" id="toggle-wind" checked> Mostrar viento</label>
+            <label><input type="checkbox" id="toggle-risk" checked> Mostrar riesgo</label>
+            <label for="style-select">Estilo de mapa:</label>
+            <select id="style-select">
+                <option value="HYBRID">Hybrid</option>
+                <option value="OUTDOOR">Outdoor</option>
+                <option value="WINTER">Winter</option>
+                <option value="SATELLITE">Satellite</option>
+                <option value="STREETS">Streets</option>
+            </select>
+        </div>
+
+        <div class="colorbar-container">
+            Riesgo
+            <div id="risk-bar"></div>
+            <div class="labels">
+                <span>Bajo</span>
+                <span>Moderado</span>
+                <span>Alto</span>
+                <span>Muy Alto</span>
+                <span>Extremo</span>
+            </div>
+        </div>
+
+        <div class="colorbar-container">
+            Viento (km/h)
+            <div id="wind-bar"></div>
+            <div class="labels" style="justify-content: space-between;">
+                <span>0</span>
+                <span>10</span>
+                <span>20</span>
+                <span>30</span>
+                <span>40+</span>
+            </div>
+        </div>
+
+        <div class="time-controls">
+            <button id="playPauseBtn">Play 3600x</button>
+            <input type="range" id="timeSlider" min="0" max="100" step="1" />
+            <div id="timeText" style="font-size: 12px; margin-top: 5px;"></div>
+        </div>
+    </div>
+
+    <script>
+        maptilersdk.config.apiKey = '4lMDFV5EMSO3VTvyhMqg';
+
+        const map = new maptilersdk.Map({
+            container: 'map',
+            style: maptilersdk.MapStyle.HYBRID,
+            center: [-100.28706376985032,25.65617721063847],
+            zoom: 14,
+            pitch: 70,
+            bearing: -100.86,
+            maxPitch: 85,
+            maxZoom: 16,
+            terrain: true,
+            terrainControl: true
+        });
+
+        const windLayer = new maptilerweather.WindLayer({
+            id: "Wind Particles",
+            colorramp: maptilerweather.ColorRamp.builtin.NULL,
+            speed: 0.001,
+            fadeFactor: 0.03,
+            maxAmount: 256,
+            density: 50,
+            fastIsLarger: true,
+            size: 2,
+            color: [255, 255, 255],        // 🔴 rojo translúcido
+            fastColor: [255, 255, 255, 50]    // 🔴 más intenso
+        });
+
+        const pointerData = document.getElementById("pointer-data");
+        let pointerLngLat = null;
+
+        function addRiskLayer() {
+            fetch('riesgo_vector_heatmapxd.geojson')
+                .then(res => res.json())
+                .then(data => {
+                    if (!map.getSource('riesgo')) {
+                        map.addSource('riesgo', {
+                            type: 'geojson',
+                            data: data
+                        });
+                    }
+
+                    if (!map.getLayer('riesgo-layer')) {
+                        map.addLayer({
+                            id: 'riesgo-layer',
+                            type: 'fill',
+                            source: 'riesgo',
+                            paint: {
+                                'fill-color': ['get', 'color'],
+                                'fill-opacity': 0.7,
+                                'fill-outline-color': 'rgba(0,0,0,0.2)'
+                            }
+                        }, 'Wind Particles');
+                    }
+                });
+        }
+
+
+        map.on('load', () => {
+
+            let currentStyle = maptilersdk.MapStyle.HYBRID;
+
+                const styleSelect = document.getElementById("style-select");
+
+                styleSelect.addEventListener("change", () => {
+                    const selected = styleSelect.value;
+                    currentStyle = maptilersdk.MapStyle[selected];
+                    map.setStyle(currentStyle);
+
+                    map.once('style.load', () => {
+                        // Reagregar capa de riesgo
+                        addRiskLayer();
+
+                        // Reagregar capa de viento
+                        if (!map.getSource('wind-vectors')) {
+                            fetch('wind_vectors.geojson')
+                                .then(res => res.json())
+                                .then(data => {
+                                    map.addSource('wind-vectors', {
+                                        type: 'geojson',
+                                        data: data
+                                    });
+                                    map.addLayer({
+                                        id: 'wind-vectors-layer',
+                                        type: 'line',
+                                        source: 'wind-vectors',
+                                        paint: {
+                                            'line-color': '#000',
+                                            'line-width': 1.5
+                                        }
+                                    });
+                                });
+                        }
+
+                        // Reagregar windLayer
+                        map.addLayer(windLayer);
+                    });
+                });
+
+                // Carga inicial de capas
+                map.addLayer(windLayer);
+                addRiskLayer();
+
+                // Capa de vectores de viento
+                fetch('wind_vectors.geojson')
+                    .then(res => res.json())
+                    .then(data => {
+                        map.addSource('wind-vectors', {
+                            type: 'geojson',
+                            data: data
+                        });
+                        map.addLayer({
+                            id: 'wind-vectors-layer',
+                            type: 'line',
+                            source: 'wind-vectors',
+                            paint: {
+                                'line-color': '#000',
+                                'line-width': 1.5
+                            }
+                        });
+                    });
+
+            windLayer.on("sourceReady", () => {
+                const startDate = windLayer.getAnimationStartDate();
+                const endDate = windLayer.getAnimationEndDate();
+                const currentDate = windLayer.getAnimationTimeDate();
+                const timeSlider = document.getElementById("timeSlider");
+                timeSlider.min = +startDate;
+                timeSlider.max = +endDate;
+                timeSlider.value = +currentDate;
+                updateTimeText();
+
+                pointerData.style.display = document.getElementById("toggle-wind").checked ? 'flex' : 'none';
+            });
+
+            windLayer.on("tick", () => {
+                updateTimeText();
+                updatePointerValue(pointerLngLat);
+            });
+
+            windLayer.on("animationTimeSet", updateTimeText);
+        });
+
+        const timeSlider = document.getElementById("timeSlider");
+        const playPauseBtn = document.getElementById("playPauseBtn");
+        const timeText = document.getElementById("timeText");
+
+        let isPlaying = false;
+
+        playPauseBtn.addEventListener("click", () => {
+            if (isPlaying) {
+                windLayer.animateByFactor(0);
+                playPauseBtn.textContent = "Play 3600x";
+            } else {
+                windLayer.animateByFactor(3600);
+                playPauseBtn.textContent = "Pause";
+            }
+            isPlaying = !isPlaying;
+        });
+
+        timeSlider.addEventListener("input", () => {
+            windLayer.setAnimationTime(parseInt(timeSlider.value));
+            updateTimeText();
+        });
+
+        function updateTimeText() {
+            const date = windLayer.getAnimationTimeDate();
+            timeText.textContent = date.toLocaleString();
+            timeSlider.value = +date;
+        }
+
+        map.on('mousemove', (e) => {
+            updatePointerValue(e.lngLat);
+        });
+
+        function windSpeedToColor(speed) {
+            if (speed >= 40) return '#f00';
+            if (speed >= 30) return '#f90';
+            if (speed >= 20) return '#ff0';
+            if (speed >= 10) return '#0f0';
+            if (speed > 0) return '#0ff';
+            return '#00f';
+        }
+
+        function updatePointerValue(lngLat) {
+            if (!lngLat) return;
+            pointerLngLat = lngLat;
+            const value = windLayer.pickAt(lngLat.lng, lngLat.lat);
+            if (!value) {
+                pointerData.innerHTML = '';
+                return;
+            }
+            const color = windSpeedToColor(value.speedKilometersPerHour);
+            pointerData.innerHTML = `<div id="arrow" style="transform: rotate(${value.directionAngle}deg); color: ${color}; border: dotted ${color} 4px; background: #fff; border-radius: 50%; padding: 4px;">↑</div>
+                ${value.compassDirection} <span style="color:${color}; font-weight: bold;">${value.speedKilometersPerHour.toFixed(1)}</span> km/h`;
+        }
+
+        document.getElementById("toggle-wind").addEventListener("change", function () {
+            const visible = this.checked ? 'visible' : 'none';
+            map.setLayoutProperty("Wind Particles", "visibility", visible);
+            pointerData.style.display = this.checked ? 'flex' : 'none';
+        });
+
+        document.getElementById("toggle-risk").addEventListener("change", function () {
+            const visible = this.checked ? 'visible' : 'none';
+            if (map.getLayer("riesgo-layer")) {
+                map.setLayoutProperty("riesgo-layer", "visibility", visible);
+            }
+        });
+    </script>
+</body>
+
+</html>
