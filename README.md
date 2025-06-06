@@ -2,6 +2,8 @@
 
 This repository contains the complete codebase and supporting resources for a wildfire detection and image fusion system. The system uses **thermal and optic camera calibration**, **YOLO-based fire detection**, **GPS logging**, and **real-time fusion**.  
 
+It is vital to create a virtual environment and run the requirements.txt to include all the required dependencies.
+
 ---
 
 ## 📁 Project Structure
