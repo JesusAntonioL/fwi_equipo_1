@@ -63,3 +63,4 @@ Synchronized data between thermal and optic cameras, used for evaluation and run
 - Samantha López Vizcarra | A01742394
 - Juan Alberto Moreno Cantú | A00833357  
 
+In work with GTI (Green Tech Innovation).
