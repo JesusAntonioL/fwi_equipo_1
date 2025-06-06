@@ -1,33 +1,21 @@
 import time
 from ipyleaflet import TileLayer
 import json
-import folium
 import datetime
 import webbrowser
 import leafmap
 import ee
 import math
 import os
-import numpy as np
-import pandas as pd
-import rasterio
-import geopandas as gpd
-from shapely.geometry import LineString
-import sys
-
-if len(sys.argv) != 4:
-    print("Usage: python3 fwi-map2.py <lat> <long> <maxTemp>")
-    sys.exit(1)
-
-lat = float(sys.argv[1])
-long = float(sys.argv[2])
-maxTemp = float(sys.argv[3])
-
-print(f"Received coordinates: Latitude={lat}, Longitude={long}, Temperature={maxTemp}")
-
+#Imports para abrir el archivo 3D en localhost de manera automática
+import http.server
+import socketserver
+import webbrowser
+import threading
+import time
+import os
 
 # ============= FUNCIONES =============
-
 # Cálculo del índice de riesgo de incendio forestal (FWI)
 def risk_score(ndvi, slope, thermal):
     """
@@ -42,7 +30,7 @@ def risk_score(ndvi, slope, thermal):
         thermalWeight = 2.3786/7.5846
     Teniendo así los siguientes pesos
     """
-    # Pesos de las variables
+    # Definición de pesos para el cálculo del indice de riesgo
     ndviWeight = 0.5142
     slopeWeight = 0.1722
     thermalWeight = 0.3136
@@ -52,7 +40,7 @@ def risk_score(ndvi, slope, thermal):
     return score
 
 
-# Niveles de riesgo de incendio forestal
+# Creación de la imagen 2D para el indice de riesgo
 def visualize_risk(ndvi, slope, temperature):
     ndviWeight = 0.5142
     slopeWeight = 0.1722
@@ -97,23 +85,16 @@ def add_ee_layer_ipyleaflet(self, ee_object, vis_params={}, name="Layer"):
 
 
 # Fechas de análisis
-def date(delay):
+def date():
 
-    #Fechas Escamilla 
+    #Fechas en las que existen datos para Centro deportivo Escamilla 
     start = '2025-04-17'
     end = '2025-05-17'
 
-    #Fechas California
-    #start = '2025-04-01'
-    #end = '2025-04-30'
+    #Fechas en las que existen datos para Pasadena California
+    # start = '2025-04-01'
+    # end = '2025-04-30'
 
-    # gap = 31
-    # today = datetime.date.today()
-    # end_str = (today - datetime.timedelta(days=delay)).isoformat()
-    # start_str = (today - datetime.timedelta(days=delay+gap)).isoformat()
-    # print(f"Fechas de análisis: {start_str} a {end_str}")
-    # start = ee.Date(start_str)
-    # end = ee.Date(end_str)
     return start, end
 
 
@@ -158,49 +139,51 @@ def wind_data(url, filename, tif):
         leafmap.netcdf_to_tif(filename, tif, variables=[
                               "u_wind", "v_wind"], shift_lon=True)
 
-
 #  ============= AUTENTICACIÓN E INICIALIZACIÓN =============
-ee.Authenticate()
-ee.Initialize(project='light-sunup-288723')
+ee.Authenticate()  # Autentica la cuenta de Google con la que se trabajará 
+ee.Initialize(project='light-sunup-288723')  # Nombre del proyecto creado en Google Earth Engine
 
-# # Coordenadas California
-#lat = float(34.21113114902449)
-#long = float(-118.1138591514406)
 
-#Coodernadas Centro deportivo escamilla
-# lat = float(25.65617721063847)
-# long = float(-100.28706376985032)
+#  ============= DEFINICIÓN DE COODENADAS =============
 
-# Ruta al archivo HTML
-html_path = "G:/My Drive/expansion_sim/map6.html"
+# Coordenadas para Paasadena California
+# lat = float(34.21113114902449)
+# long = float(-118.1138591514406)
+
+# Coodernadas Centro deportivo Escamilla
+lat = float(25.65617721063847)
+long = float(-100.28706376985032)
+
+#  ============= CAMBIAR COODENADAS EN EL HTML DEL MAPA 3D DE FORMA AUTOMÁTICA =============
+
+# Ruta al archivo HTML que debe de estar en el mismo folder 
+html_path = "Mapa3D.html"
 
 # Leer el HTML
-with open(html_path, "r", encoding="utf-8") as f:
+with open('Mapa3D.html', "r", encoding="utf-8") as f:
     html_content = f.read()
 
-# Reemplazar cualquier línea que contenga "center:"
+# Reemplazar cualquier línea que contenga "center:" con las variables de latitud y longitud
 import re
 html_content = re.sub(r'center: \[.*?\],', f'center: [{long},{lat}],', html_content)
 
-# Guardar los cambios
-with open(html_path, "w", encoding="utf-8") as f:
+# Guardar los cambios realizados 
+with open('Mapa3D.html', "w", encoding="utf-8") as f:
     f.write(html_content)
 
 print("Coordenadas actualizadas en el HTML.")
 
-#Coodernadas Centro deportivo escamilla
-# lat = float(25.65617721063847)
-# long = float(-100.28706376985032)
 
+#  ============= DEFINICIÓN DE VARIABLES PARA EN ANALISIS =============
 
 # Creación de punto geométrico (área 10 km alrededor)
 point = ee.Geometry.Point([long, lat])
 area = point.buffer(10000)
 
 # Fecha
-start, end = date(delay=35)
+start, end = date()
 
-# ============= IMPORTAR DATOS =============
+# ============= IMPORTACIÓN DE DATOS =============
 # APIs
 ndvi = api_ndvi(start, end, area)
 temperature = api_temp(start, end, point, area)
@@ -244,32 +227,40 @@ else:
             valor_ndvi, valor_pendiente_rad, valor_temp)
         nivel = classify_risk(riesgo_estimado)
 
+        # # Impresión de indice de riesgo para cada coodenada
         # print(f"Índice de riesgo: {riesgo_estimado:.2f} ({nivel})")
         # print(f"Coordenadas: {coords}")
         # print(f"NDVI: {valor_ndvi}, Temp: {valor_temp} °C, Viento: {valor_wind} m/s, Pendiente: {valor_pendiente}°")
         # print(f"Índice de riesgo: {riesgo_estimado:.2f}")
 
-# ----------------------------------------------------------------------------------------
-# Step 1: Create fine-grained bins from the risk raster
+#  ============= VISUALIZACIÓN 3D: CREACIÓN DEL OBJETO GEOJSON =============
+
+# Se define el tamaño de los intervalos (step) y el rango de valores del índice de riesgo
 step = 100
 min_risk = 900
 max_risk = 3300
 
+# Se inicializa una imagen con valor cero en todas sus celdas, que servirá como base para clasificar los valores de riesgo
 bins = ee.Image.constant(0)
-for i in range(900, 3300, step):
+
+# Se recorre el rango de valores de riesgo en incrementos definidos por 'step'
+# En cada iteración, se crea una máscara para identificar los píxeles que pertenecen al intervalo actual
+# Luego, se asigna el valor del bin correspondiente a esas ubicaciones en la imagen
+for i in range(min_risk, max_risk, step):
     bin_mask = risk_map.gte(i).And(risk_map.lt(i + step))
     bins = bins.where(bin_mask, i)
 
-# ⬇️ Agrega estas líneas aquí, después del bucle ⬇️
-# Asegura que los valores por debajo de 900 y por encima de 3300 tengan un bin válido
-bins = bins.where(risk_map.lt(min_risk), min_risk - step)  # Ej. 800
-bins = bins.where(risk_map.gte(max_risk), max_risk)        # Ej. 3300
+# Se asignan valores binarios adicionales para garantizar que todos los valores estén cubiertos
+# Los valores menores al mínimo se etiquetan con un bin inferior (por ejemplo, 800)
+# Los valores iguales o superiores al máximo se etiquetan con el valor máximo definido
+bins = bins.where(risk_map.lt(min_risk), min_risk - step)
+bins = bins.where(risk_map.gte(max_risk), max_risk)
 
-
-# Step 2: Convert the raster bins into small vector polygons
+# Se convierten las regiones con valores binarios similares en polígonos vectoriales
+# Esto permite visualizar el mapa de riesgo como una capa vectorial con regiones diferenciadas
 polys = bins.rename('risk_bin').reduceToVectors(
     geometry=area,
-    scale=100,  # coarser scale for stability
+    scale=100,
     geometryType='polygon',
     labelProperty='risk_bin',
     maxPixels=1e13,
@@ -277,50 +268,50 @@ polys = bins.rename('risk_bin').reduceToVectors(
     eightConnected=False
 )
 
-# Step 3: Add a hex color to each polygon based on risk_bin
-step = int((3300 - 900) / 10)  # 240
+# Se define una paleta de colores para representar los distintos niveles de riesgo
+# Cada color corresponde aproximadamente a una decima parte del rango de riesgo
 palette = ee.List([
     '#00ff00', '#66ff00', '#99ff00', '#ccff00',
     '#ffff00', '#ffcc00', '#ff9900', '#ff6600',
     '#ff3300', '#ff0000'
 ])
+step = int((max_risk - min_risk) / 10)  # Se recalcula el tamaño de cada clase para asignar colores
 
-
+# Se define una función para asignar un color a cada polígono en función del valor del bin
+# La función calcula el índice de la paleta y limita su valor al rango válido
 def add_color(feature):
     bin_val = ee.Number(feature.get('risk_bin'))
     index = bin_val.subtract(min_risk).divide(step).int()
-
-    # Clamp index to be within valid range (0 to palette.length() - 1)
     index_clamped = index.min(palette.length().subtract(1))
-
     color = palette.get(index_clamped)
     return feature.set('color', color)
 
-
+# Se aplica la función de color a todos los polígonos del conjunto
 colored_polys = polys.map(add_color)
 
-# Step 4: Export the result to GeoJSON on Google Drive
+# Se exporta el resultado como un archivo GeoJSON a Google Drive
+# La colección exportada incluirá los polígonos con su valor de riesgo y color asociado
 task = ee.batch.Export.table.toDrive(
     collection=colored_polys,
     description='riesgo_vector_heatmap_geojson',
-    folder='expansion_sim',  # Or any Drive folder you prefer
-    fileNamePrefix='riesgo_vector_heatmapxd',
+    folder='expansion_incendios',
+    fileNamePrefix='riesgo_vector_heatmap',
     fileFormat='GeoJSON'
 )
 task.start()
 
+# Se imprime el estado de la tarea de exportación mientras está activa
 print("Export task started... Monitoring status:")
 while task.active():
     print("Status:", task.status()['state'])
     time.sleep(10)
 
+# Al finalizar, se muestra el estado final de la tarea
 print("Final Status:", task.status())
 
 
-# ----------------------------------------------------------------------------------------
+#  ============= VISUALIZACIÓN 2D: CREACIÓN DEL MAPA =============
 
-
-# ============= CREAR MAPA =============
 heat_map = leafmap.Map(center=(lat, long), zoom=11)
 # Extiende la clase leafmap.Map para añadir imágenes de EE
 leafmap.Map.add_ee_layer = add_ee_layer_ipyleaflet
@@ -353,20 +344,17 @@ if risk_map is not None:
     heat_map.add_ee_layer(
         risk_map, riesgo_vis, "Índice de Riesgo de Incendio")
 
-# Añadir geometría del área como GeoJSON
-geojson_str = json.dumps(area.getInfo())
-heat_map.add_geojson(geojson_str, layer_name="Área Seleccionada")
-
 # Añadir punto central
 heat_map.add_marker(location=(lat, long),
                     icon_color="blue", name="Punto Central")
 
 
-# ============= GUARDAR Y ABRIR EL MAPA EN HTML =============
+# Guardar y abrir el mapa 2D
 html_file = 'fwi-heatmap.html'  # Nombre del archivo HTML
 heat_map.to_html(html_file)
 
-# HTML que se insertará colorbars
+# ============= DISEÑO DEL MAPA 2D =============
+# Adición de la colorbar de riesgo y viento para el HTML
 colorbar_html = """
 <style>
 html, body, #map {
@@ -542,33 +530,38 @@ with open(html_file, "r+", encoding="utf-8") as file:
 # Abrir el HTML en el navegador
 webbrowser.open(html_file)
 
+# ============= Código para abrir automaticamente la visualización 3D en el localhost del navegador  =============
 
-import http.server
-import socketserver
-import webbrowser
-import threading
-import time
-import os
-
+# Definición de puerto y nombre del archivo HTML
 PORT = 8000
-HTML_FILENAME = "map6.html"
+HTML_FILENAME = "Mapa3D.html"
 
 # Abre el navegador después de una pausa
 def open_browser():
-    time.sleep(3)  # Espera 3 segundos
-    url = f"http://localhost:{8000}/{'map6.html'}"
+    time.sleep(3)  # Espera para asegurar que el servidor esté activo
+    url = f"http://localhost:{PORT}/{HTML_FILENAME}"
     webbrowser.open(url)
 
-# Usa SimpleHTTPRequestHandler para servir archivos
+# Establece el handler para servir archivos HTTP
 handler = http.server.SimpleHTTPRequestHandler
 
-# Asegúrate de estar en la carpeta correcta
+# Cambia al directorio del script actual
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
-# Lanza el navegador en un hilo separado con delay
+# Inicia un thread que abrirá el navegador automáticamente
 threading.Thread(target=open_browser).start()
 
-# Inicia el servidor
-with socketserver.TCPServer(("", 8000), handler) as httpd:
-    print(f"Servidor iniciado en http://localhost:{8000}")
+# Inicia el servidor HTTP local en el puerto indicado
+with socketserver.TCPServer(("", PORT), handler) as httpd:
+    print(f"Servidor iniciado en http://localhost:{PORT}")
     httpd.serve_forever()
+
+
+# ============= NOTAS IMPORTANTES =============
+# Cada vez que se corra este código debe de borrarse el GeoJSON existente en la carpeta manualmente 
+# Esto para asegurar que se muestre el HTML 3D correctamenta 
+# En caso de querer conservar archivos GeoJSON generados de un mapa, cambiar el nombre a otro que no sea riesgo_vector_heatmap
+
+# Para que se muestre la capa de riesgo en el HTML en el 3D es necesario presionar el boton de refresh o F5
+
+
