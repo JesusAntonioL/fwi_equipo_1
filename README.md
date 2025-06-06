@@ -10,50 +10,47 @@ This repository contains the complete codebase and supporting resources for a wi
 Contains calibration image pairs used for stereo calibration between optic and thermal cameras.
 
 ### 📂 `expansion_sim/`
-Includes simulation tools or scripts for expanding and testing the system logic in simulated environments.
+Includes simulation tools or scripts for developing the ROI, calculating the weights utilizing WOE and displaying the results in 2D and 3D.
+
+**This folder should be implemented in Google Drive Desktop to run the entire code.**
 
 ### 📂 `Models/`
-Holds trained models or YOLO weights used for object detection.
+Holds trained models or YOLO weights used for object fire and smoke detection.
 
 ### 📂 `output/`
 Stores output data such as predictions, logs, or result images.
 
 ### 📂 `raspberrypi_video_nonGUI/`
-Scripts for headless video processing on Raspberry Pi (without GUI).
+Scripts for headless video processing on Raspberry Pi 4 (without GUI) for the Lepton FLIR 3.1R.
 
 ### 📂 `runs/`
 Folder automatically created by YOLO or training processes to store experiment results.
 
 ### 📂 `STEREO_FILES/`
-Stereo image sets or outputs for calibration and alignment.
+Stereo image sets or outputs for calibration and alignment, this wasn't part of the main proposal, but was tried to improve the fusions of both thermal and optic images due to the misalignment of the images by distance variation.
 
 ### 📂 `synced_data_2/`
-Synchronized data between thermal and optic cameras, possibly used for evaluation or training.
+Synchronized data between thermal and optic cameras, used for evaluation and run withouth the need of a camera.
 
 ---
 
 ## 📄 Key Files
 
-### 🔧 `.gitignore`
-Specifies which files and folders Git should ignore (like temp files, cache, etc).
-
-### 📜 `allfileshas.txt`
-Possibly a hash record or list of all relevant files used in this project.
-
----
-
 ### 🎥 Media Files
 - `Forest_fire_video_1.mp4` – Example fire footage for testing detection algorithms.
 - `thermal-aerial-fire.mp4` – Aerial view of a fire scene using thermal imaging.
 - `Wildfire_northamerica.mp4` – Wildfire footage from North America.
-- `wildfiredetection-72d0f-firebase-adminsdk-...` – Possibly related to Firebase SDK or logging.
 
 ---
 
 ### 🧪 Calibration & Image Processing
-- `capture_checkerboard_pair.py` – Captures checkerboard images for stereo calibration.
+- `capture_checkerboard_pair.py` – Captures checkerboard images for calibration.
 - `select_checkerbox_points.py` – Selects checkerboard corners for calibration.
-- `stereo_calibration.py` – Calibrates the stereo setup between optic and thermal cameras.
+- `extract_gps.py` – Utilized to extract gps data from the RTK antenna.
+- `read_optic.py` – Utilized to read the optic camera for testing purposes.
+- `read_termal.py` – Utilized to read the optic thermal for testing purposes.
+- `real_time_fusion.py` – Utilized to test the real time fusion algorithm.
+- `main.py` – Main code which reads and processes both thermal and optic images, uses the algorithm to find the hottest spot and runs the ROI and visualization of it.
 
 ---
 
