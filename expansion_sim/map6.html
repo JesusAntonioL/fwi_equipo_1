@@ -2,12 +2,21 @@
 <html lang="es">
 
 <head>
+    <!-- Define la codificación y el diseño adaptable -->
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Mapa con Viento y Riesgo</title>
+
+    <!-- SDK de MapTiler para mapas 3D -->
     <script src="https://cdn.maptiler.com/maptiler-sdk-js/v3.2.0/maptiler-sdk.umd.min.js"></script>
+
+    <!-- Complemento de MapTiler para datos meteorológicos -->
     <script src="https://cdn.maptiler.com/maptiler-weather/v3.0.1/maptiler-weather.umd.min.js"></script>
+
+    <!-- Estilos del mapa -->
     <link href="https://cdn.maptiler.com/maptiler-sdk-js/v3.2.0/maptiler-sdk.css" rel="stylesheet" />
+
+    <!-- Estilos generales del cuerpo y del mapa -->
     <style>
         body {
             margin: 0;
@@ -22,6 +31,7 @@
             width: 100%;
         }
 
+        /* Cuadro con datos del puntero */
         #pointer-data {
             position: absolute;
             top: 10px;
@@ -49,6 +59,7 @@
             transform-origin: center;
         }
 
+        /* Contenedor para los controles */
         .ui-container {
             position: absolute;
             bottom: 10px;
@@ -71,10 +82,7 @@
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
         }
 
-        .time-controls {
-            width: 280px;
-        }
-
+        .time-controls,
         .colorbar-container {
             width: 280px;
         }
@@ -86,19 +94,13 @@
             margin-top: 4px;
         }
 
+        /* Gradientes de color para riesgo y viento */
         #risk-bar {
             height: 14px;
             background: linear-gradient(to right,
-                    #00ff00,
-                    #66ff00,
-                    #99ff00,
-                    #ccff00,
-                    #ffff00,
-                    #ffcc00,
-                    #ff9900,
-                    #ff6600,
-                    #ff3300,
-                    #ff0000);
+                    #00ff00, #66ff00, #99ff00, #ccff00,
+                    #ffff00, #ffcc00, #ff9900, #ff6600,
+                    #ff3300, #ff0000);
             border-radius: 4px;
             margin-top: 4px;
         }
@@ -106,12 +108,7 @@
         #wind-bar {
             height: 14px;
             background: linear-gradient(to right,
-                    #00f,
-                    #0ff,
-                    #0f0,
-                    #ff0,
-                    #f90,
-                    #f00);
+                    #00f, #0ff, #0f0, #ff0, #f90, #f00);
             border-radius: 4px;
             margin-top: 4px;
         }
@@ -123,11 +120,16 @@
     </style>
 </head>
 
-<body>
+ <body>
+    <!-- Contenedor principal del mapa -->
     <div id="map"></div>
+
+    <!-- Información del puntero sobre el mapa -->
     <div id="pointer-data"></div>
 
+    <!-- Panel de controles del usuario -->
     <div class="ui-container">
+        <!-- Controles de visualización -->
         <div class="control-panel">
             <label><input type="checkbox" id="toggle-wind" checked> Mostrar viento</label>
             <label><input type="checkbox" id="toggle-risk" checked> Mostrar riesgo</label>
@@ -141,30 +143,25 @@
             </select>
         </div>
 
+        <!-- Barras de colores: riesgo y viento -->
         <div class="colorbar-container">
             Riesgo
             <div id="risk-bar"></div>
             <div class="labels">
-                <span>Bajo</span>
-                <span>Moderado</span>
-                <span>Alto</span>
-                <span>Muy Alto</span>
-                <span>Extremo</span>
+                <span>Bajo</span><span>Moderado</span><span>Alto</span>
+                <span>Muy Alto</span><span>Extremo</span>
             </div>
         </div>
 
         <div class="colorbar-container">
             Viento (km/h)
             <div id="wind-bar"></div>
-            <div class="labels" style="justify-content: space-between;">
-                <span>0</span>
-                <span>10</span>
-                <span>20</span>
-                <span>30</span>
-                <span>40+</span>
+            <div class="labels">
+                <span>0</span><span>10</span><span>20</span><span>30</span><span>40+</span>
             </div>
         </div>
 
+        <!-- Controles de tiempo para animaciones -->
         <div class="time-controls">
             <button id="playPauseBtn">Play 3600x</button>
             <input type="range" id="timeSlider" min="0" max="100" step="1" />
@@ -173,8 +170,10 @@
     </div>
 
     <script>
+        // Configura la API de MapTiler
         maptilersdk.config.apiKey = '4lMDFV5EMSO3VTvyhMqg';
 
+        // Crea el mapa con vista 3D y estilo híbrido
         const map = new maptilersdk.Map({
             container: 'map',
             style: maptilersdk.MapStyle.HYBRID,
@@ -188,6 +187,7 @@
             terrainControl: true
         });
 
+        // Capa animada de partículas de viento
         const windLayer = new maptilerweather.WindLayer({
             id: "Wind Particles",
             colorramp: maptilerweather.ColorRamp.builtin.NULL,
@@ -197,22 +197,21 @@
             density: 50,
             fastIsLarger: true,
             size: 2,
-            color: [255, 255, 255],        // 🔴 rojo translúcido
-            fastColor: [255, 255, 255, 50]    // 🔴 más intenso
+            color: [255, 255, 255],
+            fastColor: [255, 255, 255, 50]
         });
 
+        // Elemento HTML para mostrar datos del puntero
         const pointerData = document.getElementById("pointer-data");
         let pointerLngLat = null;
 
+        // Agrega capa de riesgo vectorial al mapa
         function addRiskLayer() {
-            fetch('riesgo_vector_heatmapxd.geojson')
+            fetch('riesgo_vector_heatmap.geojson')
                 .then(res => res.json())
                 .then(data => {
                     if (!map.getSource('riesgo')) {
-                        map.addSource('riesgo', {
-                            type: 'geojson',
-                            data: data
-                        });
+                        map.addSource('riesgo', { type: 'geojson', data: data });
                     }
 
                     if (!map.getLayer('riesgo-layer')) {
@@ -230,81 +229,72 @@
                 });
         }
 
-
+        // Configuración al cargar el mapa
         map.on('load', () => {
-
             let currentStyle = maptilersdk.MapStyle.HYBRID;
+            const styleSelect = document.getElementById("style-select");
 
-                const styleSelect = document.getElementById("style-select");
+            // Cambia el estilo del mapa dinámicamente
+            styleSelect.addEventListener("change", () => {
+                currentStyle = maptilersdk.MapStyle[styleSelect.value];
+                map.setStyle(currentStyle);
 
-                styleSelect.addEventListener("change", () => {
-                    const selected = styleSelect.value;
-                    currentStyle = maptilersdk.MapStyle[selected];
-                    map.setStyle(currentStyle);
+                map.once('style.load', () => {
+                    addRiskLayer();
 
-                    map.once('style.load', () => {
-                        // Reagregar capa de riesgo
-                        addRiskLayer();
-
-                        // Reagregar capa de viento
-                        if (!map.getSource('wind-vectors')) {
-                            fetch('wind_vectors.geojson')
-                                .then(res => res.json())
-                                .then(data => {
-                                    map.addSource('wind-vectors', {
-                                        type: 'geojson',
-                                        data: data
-                                    });
-                                    map.addLayer({
-                                        id: 'wind-vectors-layer',
-                                        type: 'line',
-                                        source: 'wind-vectors',
-                                        paint: {
-                                            'line-color': '#000',
-                                            'line-width': 1.5
-                                        }
-                                    });
+                    if (!map.getSource('wind-vectors')) {
+                        fetch('wind_vectors.geojson')
+                            .then(res => res.json())
+                            .then(data => {
+                                map.addSource('wind-vectors', { type: 'geojson', data: data });
+                                map.addLayer({
+                                    id: 'wind-vectors-layer',
+                                    type: 'line',
+                                    source: 'wind-vectors',
+                                    paint: {
+                                        'line-color': '#000',
+                                        'line-width': 1.5
+                                    }
                                 });
-                        }
+                            });
+                    }
 
-                        // Reagregar windLayer
-                        map.addLayer(windLayer);
+                    map.addLayer(windLayer);
+                });
+            });
+
+            // Capas iniciales
+            map.addLayer(windLayer);
+            addRiskLayer();
+
+            // Carga vectores de viento
+            fetch('wind_vectors.geojson')
+                .then(res => res.json())
+                .then(data => {
+                    map.addSource('wind-vectors', { type: 'geojson', data: data });
+                    map.addLayer({
+                        id: 'wind-vectors-layer',
+                        type: 'line',
+                        source: 'wind-vectors',
+                        paint: {
+                            'line-color': '#000',
+                            'line-width': 1.5
+                        }
                     });
                 });
 
-                // Carga inicial de capas
-                map.addLayer(windLayer);
-                addRiskLayer();
-
-                // Capa de vectores de viento
-                fetch('wind_vectors.geojson')
-                    .then(res => res.json())
-                    .then(data => {
-                        map.addSource('wind-vectors', {
-                            type: 'geojson',
-                            data: data
-                        });
-                        map.addLayer({
-                            id: 'wind-vectors-layer',
-                            type: 'line',
-                            source: 'wind-vectors',
-                            paint: {
-                                'line-color': '#000',
-                                'line-width': 1.5
-                            }
-                        });
-                    });
-
+            // Configura controles de tiempo y animación
             windLayer.on("sourceReady", () => {
                 const startDate = windLayer.getAnimationStartDate();
                 const endDate = windLayer.getAnimationEndDate();
                 const currentDate = windLayer.getAnimationTimeDate();
+
                 const timeSlider = document.getElementById("timeSlider");
                 timeSlider.min = +startDate;
                 timeSlider.max = +endDate;
                 timeSlider.value = +currentDate;
-                updateTimeText();
 
+                updateTimeText();
                 pointerData.style.display = document.getElementById("toggle-wind").checked ? 'flex' : 'none';
             });
 
@@ -316,6 +306,7 @@
             windLayer.on("animationTimeSet", updateTimeText);
         });
 
+        // Controles para reproducir la animación del viento
         const timeSlider = document.getElementById("timeSlider");
         const playPauseBtn = document.getElementById("playPauseBtn");
         const timeText = document.getElementById("timeText");
@@ -344,32 +335,27 @@
             timeSlider.value = +date;
         }
 
+        // Mostrar datos al mover el mouse sobre el mapa
         map.on('mousemove', (e) => {
             updatePointerValue(e.lngLat);
         });
 
-        function windSpeedToColor(speed) {
-            if (speed >= 40) return '#f00';
-            if (speed >= 30) return '#f90';
-            if (speed >= 20) return '#ff0';
-            if (speed >= 10) return '#0f0';
-            if (speed > 0) return '#0ff';
-            return '#00f';
-        }
-
         function updatePointerValue(lngLat) {
             if (!lngLat) return;
             pointerLngLat = lngLat;
+
             const value = windLayer.pickAt(lngLat.lng, lngLat.lat);
             if (!value) {
                 pointerData.innerHTML = '';
                 return;
             }
-            const color = windSpeedToColor(value.speedKilometersPerHour);
-            pointerData.innerHTML = `<div id="arrow" style="transform: rotate(${value.directionAngle}deg); color: ${color}; border: dotted ${color} 4px; background: #fff; border-radius: 50%; padding: 4px;">↑</div>
+
+            const color = "#f00";
+            pointerData.innerHTML = `<div id="arrow" style="transform: rotate(${value.directionAngle}deg); color: ${color}; border: dotted ${color} 4px;">↑</div>
                 ${value.compassDirection} <span style="color:${color}; font-weight: bold;">${value.speedKilometersPerHour.toFixed(1)}</span> km/h`;
         }
 
+        // Mostrar u ocultar las capas según el usuario
         document.getElementById("toggle-wind").addEventListener("change", function () {
             const visible = this.checked ? 'visible' : 'none';
             map.setLayoutProperty("Wind Particles", "visibility", visible);
@@ -384,5 +370,4 @@
         });
     </script>
 </body>
-
 </html>
