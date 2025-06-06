@@ -14,7 +14,17 @@ import webbrowser
 import threading
 import time
 import os
+import sys
 
+if len(sys.argv) != 4:
+    print("Usage: python3 fwi-map2.py <lat> <long> <maxTemp>")
+    sys.exit(1)
+
+lat = float(sys.argv[1])
+long = float(sys.argv[2])
+maxTemp = float(sys.argv[3])
+
+print(f"Received coordinates: Latitude={lat}, Longitude={long}, Temperature={maxTemp}")
 # ============= FUNCIONES =============
 # Cálculo del índice de riesgo de incendio forestal (FWI)
 def risk_score(ndvi, slope, thermal):
@@ -151,8 +161,8 @@ ee.Initialize(project='light-sunup-288723')  # Nombre del proyecto creado en Goo
 # long = float(-118.1138591514406)
 
 # Coodernadas Centro deportivo Escamilla
-lat = float(25.65617721063847)
-long = float(-100.28706376985032)
+#lat = float(25.65617721063847)
+#long = float(-100.28706376985032)
 
 #  ============= CAMBIAR COODENADAS EN EL HTML DEL MAPA 3D DE FORMA AUTOMÁTICA =============
 
