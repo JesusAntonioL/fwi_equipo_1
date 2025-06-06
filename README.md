@@ -56,6 +56,14 @@ Synchronized data between thermal and optic cameras, used for evaluation and run
 
 ---
 
+### 📂 expansion_incendios
+- `fwi-map.py` – Collects coordinate and date data and calls corresponding API data to generate an interactive map that, based on a formula, determines the fire risk in a specific area, runs the visualization of the calculation based on the .html.
+- `woeandiv-calculation.py` – Use the .CSV file created by woeadata2 to perform a Weight of Evidence and Information Value analysis and determine IV values ​​for each variable of interest for the risk formula (NDVI, land slope angle, and land surface temperature).
+- `woe-data2.py` – Uses data from GEE datasets to generate a .CSV file containing NDVI, slope angle, and ground temperature data for areas where significant fires have occurred.
+- `Mapa3D.html` – Visulizes the generated heatmap in the 3D visualizator.
+- `fwi-heatmap.html` – Visulizes the generated heatmap in the 2D visualizator.
+---
+
 ### Made by:
 - Jesús Antonio López Malacón | A01742257
 - Carlos Martínez García | A01351950
