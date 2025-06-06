@@ -233,7 +233,7 @@ try:
             
         # === Value of risky temperature, runs the prediction model ===
         if maxVal >= 70:
-            subprocess.run([python_executable, 'G:/My Drive/expansion_sim/fwi-map2.py', str(lat), str(lon), str(maxVal)])
+            subprocess.run([python_executable, 'G:/My Drive/expansion_incendios/fwi-map2.py', str(lat), str(lon), str(maxVal)])
             break
 
 finally:
