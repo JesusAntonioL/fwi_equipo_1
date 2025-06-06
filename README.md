@@ -23,7 +23,7 @@ Holds trained models or YOLO weights used for object fire and smoke detection.
 Stores output data such as predictions, logs, or result images.
 
 ### 📂 `raspberrypi_video_nonGUI/`
-Scripts for headless video processing on Raspberry Pi 4 (without GUI) for the Lepton FLIR 3.1R.
+Scripts for headless video processing on Raspberry Pi 4 (without GUI) for the Lepton FLIR 3.1R based on the [GroupsGet Lepton Modulo Repo](https://github.com/groupgets/LeptonModule).
 
 ### 📂 `runs/`
 Folder automatically created by YOLO or training processes to store experiment results.
